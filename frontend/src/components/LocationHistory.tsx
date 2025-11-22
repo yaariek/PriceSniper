@@ -1,37 +1,63 @@
-import { Building, Calendar, FileText, TrendingUp } from "lucide-react";
+import { Building, Calendar, FileText, TrendingUp, Home, Ruler, BedDouble } from "lucide-react";
+import { PropertyContext } from "@/lib/api";
 
 interface LocationHistoryProps {
   address: string;
   jobType: string;
+  propertyContext?: PropertyContext;
 }
 
-const LocationHistory = ({ address, jobType }: LocationHistoryProps) => {
+const LocationHistory = ({ address, jobType, propertyContext }: LocationHistoryProps) => {
+  const formatCurrency = (value: number | null) => {
+    if (!value) return "N/A";
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(value);
+  };
+
+  const formatPropertyType = (type: string | null) => {
+    if (!type) return "Unknown";
+    return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+
   const historyData = [
     {
       icon: Building,
       label: "Property Type",
-      value: "Single Family Residential",
+      value: formatPropertyType(propertyContext?.property_type || null),
       iconColor: "text-primary",
       bgColor: "bg-primary/10",
     },
     {
       icon: Calendar,
       label: "Year Built",
-      value: "1998",
+      value: propertyContext?.property_year_built ? propertyContext.property_year_built.toString() : "Unknown",
+      iconColor: "text-accent",
+      bgColor: "bg-accent/10",
+    },
+    {
+      icon: Ruler,
+      label: "Size",
+      value: propertyContext?.property_size_sqm ? `${propertyContext.property_size_sqm} sqm` : "Unknown",
+      iconColor: "text-primary",
+      bgColor: "bg-primary/10",
+    },
+    {
+      icon: BedDouble,
+      label: "Bedrooms",
+      value: propertyContext?.number_of_bedrooms ? propertyContext.number_of_bedrooms.toString() : "Unknown",
       iconColor: "text-accent",
       bgColor: "bg-accent/10",
     },
     {
       icon: TrendingUp,
-      label: "Last Inspection",
-      value: "March 2023",
+      label: "Last Sale",
+      value: propertyContext?.last_sale_price ? `${formatCurrency(propertyContext.last_sale_price)} (${propertyContext.last_sale_date || 'Unknown Date'})` : "No recent sale",
       iconColor: "text-primary",
       bgColor: "bg-primary/10",
     },
     {
-      icon: FileText,
-      label: "Previous Reports",
-      value: "2 on file",
+      icon: Home,
+      label: "Est. Value",
+      value: formatCurrency(propertyContext?.estimated_value || null),
       iconColor: "text-accent",
       bgColor: "bg-accent/10",
     },
@@ -44,7 +70,7 @@ const LocationHistory = ({ address, jobType }: LocationHistoryProps) => {
         <p className="text-xs sm:text-sm text-muted-foreground">{address}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {historyData.map((item, index) => (
           <div
             key={index}

@@ -27,7 +27,27 @@ class ContextOptimizer:
             raw_data_text = self._format_raw_results(raw_results)
             
             # Create extraction prompt
+            system_prompt = """You are an expert property data analyst. Your goal is to extract specific property details from search results.
             
+            Extract the following fields into a JSON object:
+            - property_year_built: integer (e.g. 1930). Be aggressive in inferring this from "Victorian" (1837-1901 -> ~1870), "Edwardian" (1901-1910 -> ~1905), "1930s" -> 1935.
+            - year_built_confidence: "exact", "estimated", "inferred", "unknown"
+            - architectural_period: string (e.g. "Victorian", "Post-war")
+            - property_type: "flat", "terraced", "semi_detached", "detached", "bungalow", "other"
+            - property_size_sqm: float (convert sqft to sqm if needed: sqft * 0.0929)
+            - number_of_bedrooms: integer
+            - number_of_floors: integer
+            - last_sale_price: float
+            - last_sale_date: string (YYYY-MM-DD)
+            - estimated_value: float
+            - neighbourhood_price_median: float
+            - neighbourhood_price_trend: "up", "down", "stable"
+            - material_cost_band: "budget", "medium", "premium" (infer from property value/type)
+            - labour_rate_band: "budget", "medium", "premium" (infer from location/value)
+            
+            If exact year is not found but period is known (e.g. Victorian), estimate the year and set confidence to "inferred".
+            If property type is ambiguous, look for clues like "floor" (flat), "shared wall" (semi/terrace).
+            """
 
             user_prompt = f"""Extract property context from these search results:
 

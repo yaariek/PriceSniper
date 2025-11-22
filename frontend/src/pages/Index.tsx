@@ -326,7 +326,11 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            <LocationHistory address={inspectionData.address} jobType={inspectionData.jobType} />
+            <LocationHistory 
+              address={inspectionData.address} 
+              jobType={inspectionData.jobType} 
+              propertyContext={bidData?.property_context}
+            />
             <BillingList items={billingItems} />
             <TotalSummary total={totalCost} itemCount={billingItems.length} />
           </div>
