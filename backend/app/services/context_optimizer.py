@@ -28,13 +28,15 @@ class ContextOptimizer:
             
             # Create extraction prompt
             system_prompt = """You are an expert property data analyst. Your goal is to extract specific property details from search results.
-            
-            Extract the following fields into a JSON object:
-            - property_year_built: integer (e.g. 1930). Be aggressive in inferring this from "Victorian" (1837-1901 -> ~1870), "Edwardian" (1901-1910 -> ~1905), "1930s" -> 1935.
-            - year_built_confidence: "exact", "estimated", "inferred", "unknown"
-            - architectural_period: string (e.g. "Victorian", "Post-war")
+
+            Important: DO NOT invent or estimate values that are not explicitly present in the source material. Only return values that are directly supported by the Valyu search results.
+
+            Extract the following fields into a JSON object if they are explicitly stated in the results; otherwise return null or omit the field:
+            - property_year_built: integer (e.g. 1930). Do not infer a numeric year from mentions like "Victorian" or "Edwardian" unless the text explicitly provides a year.
+            - year_built_confidence: "exact", "estimated", "inferred", "unknown" (use "unknown" when not provided)
+            - architectural_period: string (e.g. "Victorian", "Post-war") — only if directly mentioned in a source
             - property_type: "flat", "terraced", "semi_detached", "detached", "bungalow", "other"
-            - property_size_sqm: float (convert sqft to sqm if needed: sqft * 0.0929)
+            - property_size_sqm: float (convert sqft to sqm only if a numeric sqft value is provided)
             - number_of_bedrooms: integer
             - number_of_floors: integer
             - last_sale_price: float
@@ -42,11 +44,10 @@ class ContextOptimizer:
             - estimated_value: float
             - neighbourhood_price_median: float
             - neighbourhood_price_trend: "up", "down", "stable"
-            - material_cost_band: "budget", "medium", "premium" (infer from property value/type)
-            - labour_rate_band: "budget", "medium", "premium" (infer from location/value)
-            
-            If exact year is not found but period is known (e.g. Victorian), estimate the year and set confidence to "inferred".
-            If property type is ambiguous, look for clues like "floor" (flat), "shared wall" (semi/terrace).
+            - material_cost_band: "budget", "medium", "premium" (only if explicitly supported by sources)
+            - labour_rate_band: "budget", "medium", "premium" (only if explicitly supported by sources)
+
+            If a field is not present or only weakly implied, return null or "unknown" instead of guessing. Return ONLY valid JSON matching the schema.
             """
 
             user_prompt = f"""Extract property context from these search results:
@@ -75,11 +76,11 @@ Return ONLY valid JSON matching the schema."""
             # Parse the response
             extracted_data = json.loads(response.choices[0].message.content)
             
-            # Ensure required fields have defaults
+            # Do not insert arbitrary defaults — prefer explicit "unknown" when fields are missing
             if not extracted_data.get("material_cost_band"):
-                extracted_data["material_cost_band"] = "medium"
+                extracted_data["material_cost_band"] = "unknown"
             if not extracted_data.get("labour_rate_band"):
-                extracted_data["labour_rate_band"] = "medium"
+                extracted_data["labour_rate_band"] = "unknown"
             
             # Create PropertyContext from extracted data
             context = PropertyContext(
@@ -105,9 +106,9 @@ Return ONLY valid JSON matching the schema."""
                 permits=extracted_data.get("permits", []),
                 likely_risk_flags=extracted_data.get("likely_risk_flags", []),
                 
-                # Cost indicators
-                material_cost_band=extracted_data.get("material_cost_band", "medium"),
-                labour_rate_band=extracted_data.get("labour_rate_band", "medium")
+                # Cost indicators — prefer explicit values from Valyu; use "unknown" when not provided
+                material_cost_band=extracted_data.get("material_cost_band", "unknown"),
+                labour_rate_band=extracted_data.get("labour_rate_band", "unknown")
             )
             
             print(f"LLM extracted context: year={context.property_year_built} ({context.year_built_confidence}), type={context.property_type}, period={context.architectural_period}")
@@ -132,9 +133,10 @@ Return ONLY valid JSON matching the schema."""
     
     def _heuristic_optimize(self, raw_results: List[Dict[str, Any]], job_info: Dict[str, Any]) -> PropertyContext:
         """Fallback heuristic extraction (original logic)"""
+        # Start with unknown bands so we don't introduce defaults when no evidence exists
         context = PropertyContext(
-            material_cost_band="medium",
-            labour_rate_band="medium"
+            material_cost_band="unknown",
+            labour_rate_band="unknown"
         )
 
         for doc in raw_results:

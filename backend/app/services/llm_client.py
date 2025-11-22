@@ -80,8 +80,98 @@ Keep it under 200 words."""
         return await self._generate(system, user)
 
     async def generate_proposal(self, context: PropertyContext, pricing: PricingOutput, job_info: dict, notes: str) -> str:
-        system = "You are a professional copywriter for construction proposals. Write a persuasive proposal for the homeowner."
-        user = f"Job: {job_info}\nNotes: {notes}\nPrice: £{pricing.price_bands.balanced}\n\nWrite a friendly, professional proposal."
+        system = """You are a senior construction estimator and bid writer for a UK building contractor.
+
+Your job is to take rough project details (address, job type, scope, context, prices, assumptions) and turn them into a clear, professional proposal email that a contractor can send directly to a homeowner or small landlord.
+
+Rules:
+- Use UK English.
+- Be specific and practical. Focus on:
+  - what will be done (scope),
+  - how much it will cost (clear number),
+  - how long it will take (estimate),
+  - what is assumed and excluded,
+  - what the client should do next.
+- Avoid cringe marketing fluff like “thrilled to have the opportunity”, “top-notch services”, “turn your dreams into reality”, etc.
+- Do NOT mention internal margins or “20% desired margin” to the client unless explicitly told to.
+- Do NOT invent technical details (brands, pipe sizes, regulations) that were not given.
+- If information is missing (e.g. duration, exact scope), keep it honest and say it will be confirmed after survey.
+
+Structure of the email:
+1. Greeting:
+   - “Dear [Homeowner/Client Name],”
+2. Short intro:
+   - 1–2 sentences referencing the project and address.
+3. Project understanding:
+   - 2–4 sentences summarising what you understand about the work and the client’s goals.
+4. Scope of works:
+   - A clear bullet list or short sections describing what is included in the price.
+5. Pricing:
+   - One clear line: 
+     - “Our quotation for the works described above is £X + VAT.”
+   - You can say it is based on current material and labour costs, but do not expose internal cost or margin unless explicitly told to.
+6. Programme / timeline:
+   - A simple estimate, e.g. “We anticipate approximately 3 weeks on site, subject to final survey.”
+7. Assumptions & exclusions:
+   - Bulleted assumptions and exclusions if provided, or a short generic minimal list if not.
+8. Next steps:
+   - Tell them how to proceed (reply to accept, arrange a survey, discuss options).
+9. Closing:
+   - Simple, professional close:
+     - “We would be pleased to discuss any aspect of this proposal in more detail.”
+     - “Kind regards,”
+     - [Sender Name]
+     - [Company Name]
+     - [Contact details]
+
+Output:
+- Return ONLY the email body as plain text, no explanations, no JSON, no role labels.
+- Format is allowed to include simple headings or bold text, but it must look like something you can paste straight into an email."""
+
+        user = f"""Use the instructions from the system prompt.
+
+Here is the project information:
+
+Address: {job_info.get('address', 'Address TBC')}
+Client name: Homeowner
+Company name: PriceSniper Construction
+Sender name: Estimating Team
+Contact details: [phone / email]
+
+Job type: {job_info.get('job_type', 'General Renovation')}
+Project summary: {job_info.get('job_description', 'As discussed')}
+
+Property context (if known): 
+- Type: {context.property_type or 'Unknown'}
+- Year Built: {context.property_year_built or 'Unknown'}
+- Notes: {notes}
+
+Scope I want to include:
+- [Scope derived from job description]
+- [Standard preparation and protection]
+- [Installation as per industry standards]
+- [Site clean up]
+
+Pricing:
+- Currency: GBP
+- Quoted amount to show to client: £{pricing.price_bands.balanced:,.2f} + VAT
+- (Internal margin: around 20% – DO NOT mention this in the email)
+
+Programme:
+- Estimated duration on site: TBC after survey
+
+Assumptions:
+- Works during normal working hours, Mon–Fri
+- No structural alterations required unless specified
+- No asbestos removal included
+
+Exclusions:
+- Planning fees or building control fees
+- Third-party design or engineering fees
+- Loose furniture and accessories
+
+Write a proposal email based on the above."""
+        
         return await self._generate(system, user)
 
     async def generate_followups(self, context: PropertyContext, pricing: PricingOutput, job_info: dict) -> FollowUpScripts:

@@ -14,7 +14,7 @@ const LocationHistory = ({ address, jobType, propertyContext }: LocationHistoryP
   };
 
   const formatPropertyType = (type: string | null) => {
-    if (!type) return "Unknown";
+    if (!type) return "Standard Residential";
     return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
@@ -29,28 +29,28 @@ const LocationHistory = ({ address, jobType, propertyContext }: LocationHistoryP
     {
       icon: Calendar,
       label: "Year Built",
-      value: propertyContext?.property_year_built ? propertyContext.property_year_built.toString() : "Unknown",
+      value: propertyContext?.property_year_built ? propertyContext.property_year_built.toString() : "Standard Construction",
       iconColor: "text-accent",
       bgColor: "bg-accent/10",
     },
     {
       icon: Ruler,
       label: "Size",
-      value: propertyContext?.property_size_sqm ? `${propertyContext.property_size_sqm} sqm` : "Unknown",
+      value: propertyContext?.property_size_sqm ? `${propertyContext.property_size_sqm} sqm` : "Standard Footprint",
       iconColor: "text-primary",
       bgColor: "bg-primary/10",
     },
     {
       icon: BedDouble,
       label: "Bedrooms",
-      value: propertyContext?.number_of_bedrooms ? propertyContext.number_of_bedrooms.toString() : "Unknown",
+      value: propertyContext?.number_of_bedrooms ? propertyContext.number_of_bedrooms.toString() : "Standard Layout",
       iconColor: "text-accent",
       bgColor: "bg-accent/10",
     },
     {
       icon: TrendingUp,
       label: "Last Sale",
-      value: propertyContext?.last_sale_price ? `${formatCurrency(propertyContext.last_sale_price)} (${propertyContext.last_sale_date || 'Unknown Date'})` : "No recent sale",
+      value: propertyContext?.last_sale_price ? `${formatCurrency(propertyContext.last_sale_price)} (${propertyContext.last_sale_date || 'Date Not Recorded'})` : "No recent sale",
       iconColor: "text-primary",
       bgColor: "bg-primary/10",
     },
@@ -87,13 +87,6 @@ const LocationHistory = ({ address, jobType, propertyContext }: LocationHistoryP
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="mt-4 sm:mt-6 p-3 sm:p-4 rounded-xl bg-muted/30 border border-border/50">
-        <p className="text-xs sm:text-sm text-muted-foreground">
-          <span className="font-semibold text-foreground">Inspector Role:</span>{" "}
-          {jobType.split("-").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")}
-        </p>
       </div>
     </div>
   );

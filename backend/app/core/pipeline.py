@@ -39,7 +39,8 @@ class BidPipeline:
         
         # 2. Detect labour rate (with caching)
         step_start = time.time()
-        labour_rate = await self.valyu.search_labour_rates(request.region, request.job_type)
+        # Pass address to get more localized rates
+        labour_rate = await self.valyu.search_labour_rates(request.region, request.job_type, address=request.address)
         
         if not labour_rate:
             # Use regional default based on address/postcode
@@ -67,7 +68,8 @@ class BidPipeline:
             labour_rate,  # Use detected labour rate
             request.desired_margin_percent,
             estimates.get("base_hours", 0),
-            estimates.get("materials_cost", 0)
+            estimates.get("materials_cost", 0),
+            urgency=request.urgency or "medium"
         )
 
         # 6. LLM Generations (parallel execution for speed)

@@ -6,34 +6,37 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search } from "lucide-react";
 import { toast } from "sonner";
+import { VoiceInput } from "./VoiceInput";
 
 interface InspectionFormProps {
   onSubmit: (data: {
     address: string;
     jobType: string;
     jobDescription: string;
-    scopeOfWork?: string;
-    knownIssues?: string[];
-    complications?: string[];
     urgency?: 'low' | 'medium' | 'high' | 'emergency';
   }) => void;
 }
 
 const InspectionForm = ({ onSubmit }: InspectionFormProps) => {
   const [address, setAddress] = useState("");
+  const [postcode, setPostcode] = useState("");
   const [jobType, setJobType] = useState("");
   const [jobDescription, setJobDescription] = useState("");
-  const [scopeOfWork, setScopeOfWork] = useState("");
   const [urgency, setUrgency] = useState<'low' | 'medium' | 'high' | 'emergency'>("medium");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!address.trim()) {
       toast.error("Please enter a property address");
       return;
     }
-    
+
+    if (!postcode.trim()) {
+      toast.error("Please enter a postcode");
+      return;
+    }
+
     if (!jobType) {
       toast.error("Please select a job type");
       return;
@@ -44,15 +47,37 @@ const InspectionForm = ({ onSubmit }: InspectionFormProps) => {
       return;
     }
 
+    // Stopgap: Basic UK validation
+    const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
+    const isValidPostcode = ukPostcodeRegex.test(postcode.trim());
+
+    // Simple check for common non-UK countries in address
+    const nonUKCountries = ["usa", "united states", "france", "germany", "spain", "italy", "canada", "australia", "china", "japan", "india"];
+    const addressLower = address.toLowerCase();
+    const hasNonUKCountry = nonUKCountries.some(country => addressLower.includes(country));
+
+    if (!isValidPostcode) {
+      toast.error("Please enter a valid UK postcode (e.g. SW1A 1AA)");
+      return;
+    }
+
+    if (hasNonUKCountry) {
+      toast.error("PriceSniper currently only supports UK properties");
+      return;
+    }
+
     onSubmit({
-      address,
+      address: `${address}, ${postcode}`,
       jobType,
       jobDescription,
-      scopeOfWork: scopeOfWork || undefined,
       urgency
     });
     toast.success("Generating bid...");
   };
+
+  const googleMapsUrl = address && postcode
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${address}, ${postcode}`)}`
+    : null;
 
   return (
     <div className="bg-card rounded-xl sm:rounded-2xl p-4 sm:p-8 border border-border shadow-[var(--shadow-card)]">
@@ -64,19 +89,59 @@ const InspectionForm = ({ onSubmit }: InspectionFormProps) => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-        <div className="space-y-2">
-          <Label htmlFor="address" className="text-sm font-medium">
-            Property Address *
-          </Label>
-          <Input
-            id="address"
-            type="text"
-            placeholder="123 Main Street, London"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            className="h-11"
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="address" className="text-sm font-medium">
+              Property Address *
+            </Label>
+            <Input
+              id="address"
+              type="text"
+              placeholder="123 Main Street"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="h-11"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="postcode" className="text-sm font-medium">
+              Postcode *
+            </Label>
+            <Input
+              id="postcode"
+              type="text"
+              placeholder="SW1A 1AA"
+              value={postcode}
+              onChange={(e) => setPostcode(e.target.value)}
+              className="h-11"
+            />
+          </div>
         </div>
+
+        {googleMapsUrl && (
+          <div className="rounded-lg overflow-hidden border border-border h-48 w-full bg-muted relative group">
+            <iframe
+              width="100%"
+              height="100%"
+              frameBorder="0"
+              style={{ border: 0 }}
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(`${address}, ${postcode}`)}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
+              allowFullScreen
+              className="opacity-75 group-hover:opacity-100 transition-opacity"
+            ></iframe>
+            <div className="absolute inset-0 flex items-center justify-center bg-black/10 group-hover:bg-black/0 transition-colors pointer-events-none">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="shadow-lg pointer-events-auto"
+                type="button"
+                onClick={() => window.open(googleMapsUrl, '_blank')}
+              >
+                View on Google Maps
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="jobType" className="text-sm font-medium">
@@ -97,9 +162,12 @@ const InspectionForm = ({ onSubmit }: InspectionFormProps) => {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="jobDescription" className="text-sm font-medium">
-            Job Description * <span className="text-muted-foreground font-normal">(Be specific!)</span>
-          </Label>
+          <div className="flex justify-between items-center">
+            <Label htmlFor="jobDescription" className="text-sm font-medium">
+              Job Description * <span className="text-muted-foreground font-normal">(Be specific!)</span>
+            </Label>
+            <VoiceInput onTranscription={(text) => setJobDescription(prev => prev + (prev ? " " : "") + text)} />
+          </div>
           <Textarea
             id="jobDescription"
             placeholder="Example: Replace 20 missing roof tiles on south-facing slope. Water damage visible on bedroom ceiling. Need to check for rot and repair any structural damage. Property is 3 stories with difficult access."
@@ -110,19 +178,6 @@ const InspectionForm = ({ onSubmit }: InspectionFormProps) => {
           <p className="text-xs text-muted-foreground">
             Include: what's broken, quantities, severity, any complications (access, asbestos, etc.)
           </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="scopeOfWork" className="text-sm font-medium">
-            Scope of Work <span className="text-muted-foreground font-normal">(Optional)</span>
-          </Label>
-          <Textarea
-            id="scopeOfWork"
-            placeholder="Example: 1. Remove damaged tiles 2. Replace with matching tiles 3. Repair ceiling damage 4. Paint ceiling"
-            value={scopeOfWork}
-            onChange={(e) => setScopeOfWork(e.target.value)}
-            className="min-h-[80px] resize-y"
-          />
         </div>
 
         <div className="space-y-2">
@@ -142,8 +197,8 @@ const InspectionForm = ({ onSubmit }: InspectionFormProps) => {
           </Select>
         </div>
 
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           className="w-full h-11 sm:h-12 text-sm sm:text-base font-semibold bg-gradient-to-r from-primary to-primary/90 hover:shadow-lg transition-all duration-300"
         >
           <Search className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />

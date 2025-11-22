@@ -33,6 +33,8 @@ number of bedrooms bedrooms rooms
 property history building permits sales price value zoning 
 architectural style Victorian Edwardian Georgian modern new build"""
         
+        print(f"DEBUG: Executing Valyu search with query: {query}")
+
         try:
             response = self.valyu_client.search(query, search_type="web")
             results = self._transform_results(response.results)
@@ -43,17 +45,20 @@ architectural style Victorian Edwardian Georgian modern new build"""
             return []
 
     @with_retry(max_retries=3, initial_delay=1.0)
-    async def search_labour_rates(self, region: str, job_type: str) -> Optional[float]:
+    async def search_labour_rates(self, region: str, job_type: str, address: str = None) -> Optional[float]:
         """Search for labour rates in the region for the job type, with caching"""
         
         # Check cache first
-        cached_rate = labour_rate_cache.get(region, job_type)
+        cache_key = f"{address or region}"
+        cached_rate = labour_rate_cache.get(cache_key, job_type)
         if cached_rate is not None:
-            print(f"Using cached labour rate for {region}, {job_type}: £{cached_rate}/hr")
+            print(f"Using cached labour rate for {cache_key}, {job_type}: £{cached_rate}/hr")
             return cached_rate
         
         # Search Valyu for labour rates
-        query = f"{region} {job_type} labour rate hourly cost contractor tradesperson"
+        # Use address if available for more local rates
+        location_query = address if address else region
+        query = f"hourly labour rate for {job_type} in {location_query} cost per hour tradesperson price"
         
         try:
             response = self.valyu_client.search(query, search_type="web")
@@ -64,11 +69,11 @@ architectural style Victorian Edwardian Georgian modern new build"""
             
             if labour_rate:
                 # Cache the result
-                labour_rate_cache.set(region, job_type, labour_rate)
-                print(f"Detected labour rate for {region}, {job_type}: £{labour_rate}/hr")
+                labour_rate_cache.set(cache_key, job_type, labour_rate)
+                print(f"Detected labour rate for {location_query}, {job_type}: £{labour_rate}/hr")
                 return labour_rate
             
-            print(f"Could not detect labour rate from search results")
+            print(f"Could not detect labour rate from search results for {location_query}")
             return None
             
         except Exception as e:
@@ -109,9 +114,11 @@ architectural style Victorian Edwardian Georgian modern new build"""
         
         # Patterns to match: "£50/hr", "£50 per hour", "£50-£60/hr", etc.
         patterns = [
-            r'£(\d+(?:\.\d+)?)\s*(?:per hour|/hr|/hour|an hour)',
-            r'£(\d+(?:\.\d+)?)\s*-\s*£(\d+(?:\.\d+)?)\s*(?:per hour|/hr|/hour)',
-            r'(\d+(?:\.\d+)?)\s*(?:pounds|GBP)\s*(?:per hour|/hr|/hour)',
+            r'£(\d+(?:\.\d+)?)\s*(?:per hour|/hr|/hour|an hour|ph)',
+            r'£(\d+(?:\.\d+)?)\s*-\s*£(\d+(?:\.\d+)?)\s*(?:per hour|/hr|/hour|ph)',
+            r'(\d+(?:\.\d+)?)\s*(?:pounds|GBP)\s*(?:per hour|/hr|/hour|ph)',
+            r'hourly rate.*?£(\d+(?:\.\d+)?)',
+            r'labour cost.*?£(\d+(?:\.\d+)?)',
         ]
         
         rates = []
@@ -138,10 +145,13 @@ architectural style Victorian Edwardian Georgian modern new build"""
                             pass
         
         if rates:
-            # Return median of found rates
-            rates.sort()
-            median_idx = len(rates) // 2
-            return rates[median_idx]
+            # Filter out unrealistic rates (e.g. < £15 or > £200)
+            valid_rates = [r for r in rates if 15 <= r <= 200]
+            if valid_rates:
+                # Return median of found rates
+                valid_rates.sort()
+                median_idx = len(valid_rates) // 2
+                return valid_rates[median_idx]
         
         return None
 

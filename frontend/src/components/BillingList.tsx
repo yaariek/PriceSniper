@@ -54,9 +54,9 @@ const BillingList = ({ items }: BillingListProps) => {
   return (
     <div className="bg-card rounded-xl sm:rounded-2xl p-4 sm:p-8 border border-border shadow-[var(--shadow-card)]">
       <div className="mb-4 sm:mb-6">
-        <h3 className="text-base sm:text-xl font-bold text-foreground mb-0.5 sm:mb-1">Identified Issues & Costs</h3>
+        <h3 className="text-base sm:text-xl font-bold text-foreground mb-0.5 sm:mb-1">Costs Breakdown</h3>
         <p className="text-xs sm:text-sm text-muted-foreground">
-          Detailed breakdown of repair and maintenance items
+          Breakdown of estimated costs based on inspection
         </p>
       </div>
 

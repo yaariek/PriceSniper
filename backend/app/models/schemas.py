@@ -65,10 +65,17 @@ class PricingBands(BaseModel):
     balanced: float
     premium: float
 
+class MarketStats(BaseModel):
+    mean: float
+    std_dev: float
+    lower_bound: float
+    upper_bound: float
+
 class PricingOutput(BaseModel):
     internal_cost_estimate: float
     price_bands: PricingBands
     min_recommended_price: float
+    market_stats: Optional[MarketStats] = None
     
     # NEW: Detailed breakdowns
     materials_breakdown: Optional[List[MaterialLineItem]] = None

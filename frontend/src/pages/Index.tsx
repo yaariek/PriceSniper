@@ -1,12 +1,9 @@
-import { useState } from "react";
-import { Building2, MapPin, ClipboardList, DollarSign, Loader2, Copy, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Building2, MapPin, ClipboardList, DollarSign, Loader2, Copy, Check, Edit2, Save, ExternalLink } from "lucide-react";
 import InspectionForm from "@/components/InspectionForm";
 import LocationHistory from "@/components/LocationHistory";
 import BillingList from "@/components/BillingList";
-import TotalSummary from "@/components/TotalSummary";
-import NotificationSettings from "@/components/NotificationSettings";
-import { notifyNewInspection } from "@/lib/notifications";
-import { useNotificationPreferences } from "@/hooks/use-notification-preferences";
+import MarketComparisonChart from "@/components/MarketComparisonChart";
 import { api, type BidResponse } from "@/lib/api";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,9 +11,9 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 
 const Index = () => {
-  const { preferences } = useNotificationPreferences();
   const [showResults, setShowResults] = useState(false);
   const [loading, setLoading] = useState(false);
   const [bidData, setBidData] = useState<BidResponse | null>(null);
@@ -27,30 +24,37 @@ const Index = () => {
     jobType: "",
   });
 
+  // Editable explanation state
+  const [explanation, setExplanation] = useState("");
+  const [isEditingExplanation, setIsEditingExplanation] = useState(false);
+
+  useEffect(() => {
+    if (bidData) {
+      setExplanation(bidData.pricing_explanation);
+    }
+  }, [bidData]);
+
   const handleSubmit = async (data: {
     address: string;
     jobType: string;
     jobDescription: string;
-    scopeOfWork?: string;
     urgency?: 'low' | 'medium' | 'high' | 'emergency';
   }) => {
     setInspectionData({ address: data.address, jobType: data.jobType });
     setLoading(true);
-    
+
     try {
       const response = await api.createBid({
         address: data.address,
         region: "London, UK",
         job_type: mapJobTypeToBackend(data.jobType),
         job_description: data.jobDescription,
-        scope_of_work: data.scopeOfWork,
         urgency: data.urgency,
         desired_margin_percent: 0.2,
       });
-      
+
       setBidData(response);
       setShowResults(true);
-      notifyNewInspection(data.address, preferences.newInspections);
       toast.success("Bid generated successfully!");
     } catch (error) {
       console.error("Failed to generate bid:", error);
@@ -78,16 +82,42 @@ const Index = () => {
 
   const handleCopyProposal = async () => {
     if (!bidData) return;
-    
+
     const proposal = `${bidData.proposal_draft}\n\nQuoted Price: £${getSelectedPrice().toLocaleString()}`;
-    
+
     try {
-      await navigator.clipboard.writeText(proposal);
+      // Try modern Clipboard API first (requires secure context or localhost)
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(proposal);
+      } else {
+        // Fallback for non-secure contexts (like HTTP IP address)
+        const textArea = document.createElement("textarea");
+        textArea.value = proposal;
+
+        // Ensure it's not visible but part of the DOM
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        textArea.setAttribute('readonly', '');
+
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+
+        if (!successful) {
+          throw new Error("Fallback copy failed");
+        }
+      }
+
       setCopied(true);
       toast.success("Proposal copied to clipboard!");
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      toast.error("Failed to copy proposal");
+      console.error("Copy failed:", error);
+      toast.error("Failed to copy proposal - check browser permissions");
     }
   };
 
@@ -102,7 +132,7 @@ const Index = () => {
     {
       id: 2,
       category: "Materials",
-      issue: bidData.property_context.material_cost_band + " cost materials",
+      issue: `${bidData.property_context.material_cost_band === 'unknown' ? 'Standard' : bidData.property_context.material_cost_band.charAt(0).toUpperCase() + bidData.property_context.material_cost_band.slice(1)} cost materials`,
       severity: "moderate" as const,
       cost: bidData.pricing.total_materials_cost || (bidData.pricing.internal_cost_estimate * 0.6),
     },
@@ -137,10 +167,6 @@ const Index = () => {
         <div className="absolute inset-0 -z-10 overflow-hidden">
           <div className="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-3xl"></div>
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/20 rounded-full blur-3xl"></div>
-        </div>
-
-        <div className="mb-4 sm:mb-6">
-          <NotificationSettings />
         </div>
 
         <div className="mb-4 sm:mb-8">
@@ -237,16 +263,40 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            {/* Pricing Explanation */}
+            {/* Market Comparison Chart */}
+            {bidData.pricing.market_stats && (
+              <MarketComparisonChart
+                marketStats={bidData.pricing.market_stats}
+                pricingBands={bidData.pricing.price_bands}
+                selectedPrice={getSelectedPrice()}
+              />
+            )}            {/* Pricing Explanation */}
             <Card>
-              <CardHeader>
-                <CardTitle>📊 Pricing Explanation</CardTitle>
-                <CardDescription>Location-specific pricing analysis</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="space-y-1">
+                  <CardTitle>📊 Pricing Explanation</CardTitle>
+                  <CardDescription>Location-specific pricing analysis</CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditingExplanation(!isEditingExplanation)}
+                >
+                  {isEditingExplanation ? <Save className="h-4 w-4" /> : <Edit2 className="h-4 w-4" />}
+                </Button>
               </CardHeader>
               <CardContent>
-                <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <p className="whitespace-pre-wrap">{bidData.pricing_explanation}</p>
-                </div>
+                {isEditingExplanation ? (
+                  <Textarea
+                    value={explanation}
+                    onChange={(e) => setExplanation(e.target.value)}
+                    className="min-h-[200px]"
+                  />
+                ) : (
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <p className="whitespace-pre-wrap">{explanation}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -287,52 +337,38 @@ const Index = () => {
               </CardContent>
             </Card>
 
-            {/* Property Context */}
-            <Card>
-              <CardHeader>
-                <CardTitle>🏠 Property Context</CardTitle>
-                <CardDescription>Enhanced property data from Valyu</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Property Type</p>
-                    <p className="text-lg font-bold capitalize">{bidData.property_context.property_type || 'Unknown'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Year Built</p>
-                    <p className="text-lg font-bold">
-                      {bidData.property_context.property_year_built || 'Unknown'}
-                      {bidData.property_context.architectural_period && ` (${bidData.property_context.architectural_period})`}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Size</p>
-                    <p className="text-lg font-bold">{bidData.property_context.property_size_sqm ? `${bidData.property_context.property_size_sqm} sqm` : 'Unknown'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Bedrooms</p>
-                    <p className="text-lg font-bold">{bidData.property_context.number_of_bedrooms || 'Unknown'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Neighbourhood Median</p>
-                    <p className="text-lg font-bold">£{bidData.property_context.neighbourhood_price_median?.toLocaleString() || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Price Trend</p>
-                    <p className="text-lg font-bold capitalize">{bidData.property_context.neighbourhood_price_trend || 'N/A'}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <LocationHistory 
-              address={inspectionData.address} 
-              jobType={inspectionData.jobType} 
+            <LocationHistory
+              address={inspectionData.address}
+              jobType={inspectionData.jobType}
               propertyContext={bidData?.property_context}
             />
             <BillingList items={billingItems} />
-            <TotalSummary total={totalCost} itemCount={billingItems.length} />
+
+            {/* Sources */}
+            {bidData.raw_valyu_results && bidData.raw_valyu_results.length > 0 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold">Sources Used</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {bidData.raw_valyu_results.map((result, index) => (
+                    <Card key={index} className="overflow-hidden">
+                      <CardHeader className="p-4 pb-2">
+                        <CardTitle className="text-sm font-medium truncate flex items-center gap-2">
+                          <ExternalLink className="h-3 w-3" />
+                          <a href={result.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                            {result.title || "Source"}
+                          </a>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        <p className="text-xs text-muted-foreground line-clamp-3">
+                          {result.snippet}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
