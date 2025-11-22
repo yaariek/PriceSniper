@@ -29,10 +29,10 @@ const Index = () => {
   });
 
   const scanningSteps = useMemo(() => [
-    "扫描地理标签与邻域基准价…",
-    "评估人工与材料区间…",
-    "匹配类似案例并生成报价策略…",
-    "压测利润率与风险缓冲…",
+    "Scanning geotags and neighborhood benchmarks…",
+    "Calibrating labor and material ranges…",
+    "Matching similar cases to craft pricing bands…",
+    "Stress-testing margin and risk buffers…",
   ], []);
 
   useEffect(() => {
@@ -143,19 +143,19 @@ const Index = () => {
     {
       id: "win_at_all_costs" as const,
       title: "Win-at-all-costs",
-      description: "更低报价，抢占机会。",
+      description: "Lower price to capture the opportunity.",
       accent: "from-emerald-500/30 to-emerald-700/10",
     },
     {
       id: "balanced" as const,
       title: "Balanced",
-      description: "利润与竞争力平衡。",
+      description: "Balanced margin and competitiveness.",
       accent: "from-primary/40 to-primary/10",
     },
     {
       id: "premium" as const,
       title: "Premium",
-      description: "为高端客户预留溢价。",
+      description: "Premium margin for high-touch clients.",
       accent: "from-amber-500/30 to-amber-700/10",
     },
   ];
@@ -174,7 +174,7 @@ const Index = () => {
             <Radar className="h-4 w-4 text-primary" />
             <span className="text-xs font-medium text-muted-foreground">Scanning</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold text-foreground">分析现场 + 生成报价策略</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-foreground">Analyzing the site & building a pricing plan</h2>
           <p className="text-sm sm:text-base text-muted-foreground">{scanningSteps[scanIndex]}</p>
         </div>
         <div className="w-full max-w-2xl">
@@ -183,7 +183,7 @@ const Index = () => {
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-3xl">
-          {[ "位置", "成本", "策略" ].map((label, idx) => (
+          {[ "Location", "Cost", "Strategy" ].map((label, idx) => (
             <div key={label} className="rounded-xl border border-border bg-card/70 p-4 shadow-[var(--shadow-card)] hover:border-t-slate-900 transition-all">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{label}</span>
@@ -217,13 +217,13 @@ const Index = () => {
                 Price Sniper — Field Intel
               </h1>
               <p className="text-[11px] sm:text-sm text-muted-foreground font-medium">
-                分步收集 → 扫描加载 → 智能报价
+                Stepwise intake → scanning loader → AI bid
               </p>
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
             <Sparkles className="h-4 w-4 text-primary" />
-            <span>Inter 字体 · 数字用 JetBrains Mono</span>
+            <span>Inter for UI · JetBrains Mono for data</span>
           </div>
         </div>
       </header>
@@ -237,7 +237,7 @@ const Index = () => {
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Alerts</p>
-                  <h3 className="text-base font-semibold text-foreground">通知策略</h3>
+                  <h3 className="text-base font-semibold text-foreground">Notification strategy</h3>
                 </div>
                 <Badge variant="outline" className="bg-secondary/60">Shadcn UI</Badge>
               </div>
@@ -248,13 +248,13 @@ const Index = () => {
               <div className="flex items-center gap-3">
                 <ShieldHalf className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="text-sm font-semibold">数据层级提示</p>
-                  <p className="text-xs text-muted-foreground">保持关键信息在首屏：地址 → 工种 → 数量 → 风险 → 价格。</p>
+                  <p className="text-sm font-semibold">Data hierarchy</p>
+                  <p className="text-xs text-muted-foreground">Keep the first fold: address → trade → quantities → risk → price.</p>
                 </div>
               </div>
               <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
                 <Activity className="h-4 w-4" />
-                <span>Hover border 提示 & 减少色彩干扰，保留米白/灰棕主色。</span>
+                <span>Hover border micro-interaction, minimal color noise with warm neutrals.</span>
               </div>
             </div>
           </div>
@@ -264,10 +264,10 @@ const Index = () => {
           <div className="space-y-6 sm:space-y-8 animate-fade-in">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {[
-                { label: "地址", value: inspectionData.address || "待填写", icon: MapPin, detail: bidData.property_context.property_type || "Property" },
-                { label: "人工参考", value: `£${(bidData.property_context.detected_labour_rate || 65).toLocaleString()}/hr`, icon: ClipboardList, detail: "Auto-detected" },
-                { label: "选择价格", value: `£${totalCost.toLocaleString()}`, icon: DollarSign, detail: selectedPricing },
-                { label: "风险系数", value: riskScore.toString(), icon: ShieldHalf, detail: inspectionData.urgency },
+                { label: "Address", value: inspectionData.address || "Pending", icon: MapPin, detail: bidData.property_context.property_type || "Property" },
+                { label: "Labour Rate", value: `£${(bidData.property_context.detected_labour_rate || 65).toLocaleString()}/hr`, icon: ClipboardList, detail: "Auto-detected" },
+                { label: "Selected Price", value: `£${totalCost.toLocaleString()}`, icon: DollarSign, detail: selectedPricing },
+                { label: "Risk Score", value: riskScore.toString(), icon: ShieldHalf, detail: inspectionData.urgency },
               ].map((fact) => (
                 <div key={fact.label} className="rounded-xl border border-border bg-card/70 p-4 shadow-[var(--shadow-card)] hover:border-t-slate-900 transition-all">
                   <div className="flex items-center justify-between mb-2">
@@ -285,12 +285,12 @@ const Index = () => {
             <Card className="border border-border/80 bg-card/80 shadow-[var(--shadow-card)]">
               <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <CardTitle>💰 报价策略</CardTitle>
-                  <CardDescription>按场景选择，数字用 JetBrains Mono 呈现。</CardDescription>
+                  <CardTitle>💰 Pricing strategy</CardTitle>
+                  <CardDescription>Choose a band; numbers render in JetBrains Mono.</CardDescription>
                 </div>
                 <div className="text-xs text-muted-foreground flex items-center gap-2">
                   <LineChart className="h-4 w-4" />
-                  <span>利润基于内部成本 £{bidData.pricing.internal_cost_estimate.toLocaleString()}</span>
+                  <span>Margins reference internal cost £{bidData.pricing.internal_cost_estimate.toLocaleString()}</span>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -322,9 +322,9 @@ const Index = () => {
                 <div className="rounded-lg border border-dashed border-border/80 bg-muted/50 p-4 flex flex-wrap gap-3 items-center">
                   <div className="flex items-center gap-2">
                     <Clock3 className="h-4 w-4 text-primary" />
-                    <p className="text-sm font-semibold">风险缓冲</p>
+                    <p className="text-sm font-semibold">Risk buffer</p>
                   </div>
-                  <p className="text-xs text-muted-foreground">紧急度 <span className="font-data text-foreground">{inspectionData.urgency}</span> 已写入风险系数，若客户催促，可切换 Premium 提前预留工期缓冲。</p>
+                  <p className="text-xs text-muted-foreground">Urgency <span className="font-data text-foreground">{inspectionData.urgency}</span> feeds the risk score; switch to Premium if you need schedule buffer.</p>
                 </div>
               </CardContent>
             </Card>
@@ -334,18 +334,18 @@ const Index = () => {
                 <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <CardTitle>📝 Proposal</CardTitle>
-                    <CardDescription>精简版客户稿，随时复制。</CardDescription>
+                    <CardDescription>Concise client-ready draft.</CardDescription>
                   </div>
                   <Button onClick={handleCopyProposal} variant="outline" className="gap-2">
                     {copied ? (
                       <>
                         <Check className="h-4 w-4" />
-                        已复制
+                        Copied
                       </>
                     ) : (
                       <>
                         <Copy className="h-4 w-4" />
-                        复制
+                        Copy
                       </>
                     )}
                   </Button>
@@ -366,8 +366,8 @@ const Index = () => {
 
               <Card className="border border-border/80 bg-card/80 shadow-[var(--shadow-card)]">
                 <CardHeader>
-                  <CardTitle>📊 Pricing Explanation</CardTitle>
-                  <CardDescription>区域 + 现场变量分析</CardDescription>
+                  <CardTitle>📊 Pricing explanation</CardTitle>
+                  <CardDescription>Area + on-site variables</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -379,18 +379,18 @@ const Index = () => {
 
             <Card className="border border-border/80 bg-card/80 shadow-[var(--shadow-card)]">
               <CardHeader>
-                <CardTitle>🏠 物业情报</CardTitle>
-                <CardDescription>按层级排列的关键字段</CardDescription>
+                <CardTitle>🏠 Property intel</CardTitle>
+                <CardDescription>Key fields by importance</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {[
-                    { label: "类型", value: bidData.property_context.property_type || "Unknown" },
-                    { label: "建造年份", value: bidData.property_context.property_year_built || "Unknown" },
-                    { label: "面积", value: bidData.property_context.property_size_sqm ? `${bidData.property_context.property_size_sqm} sqm` : "Unknown" },
-                    { label: "卧室数", value: bidData.property_context.number_of_bedrooms || "Unknown" },
-                    { label: "邻里中位价", value: bidData.property_context.neighbourhood_price_median ? `£${bidData.property_context.neighbourhood_price_median.toLocaleString()}` : "N/A" },
-                    { label: "价格趋势", value: bidData.property_context.neighbourhood_price_trend || "N/A" },
+                    { label: "Type", value: bidData.property_context.property_type || "Unknown" },
+                    { label: "Year built", value: bidData.property_context.property_year_built || "Unknown" },
+                    { label: "Size", value: bidData.property_context.property_size_sqm ? `${bidData.property_context.property_size_sqm} sqm` : "Unknown" },
+                    { label: "Bedrooms", value: bidData.property_context.number_of_bedrooms || "Unknown" },
+                    { label: "Neighborhood median", value: bidData.property_context.neighbourhood_price_median ? `£${bidData.property_context.neighbourhood_price_median.toLocaleString()}` : "N/A" },
+                    { label: "Price trend", value: bidData.property_context.neighbourhood_price_trend || "N/A" },
                   ].map((item) => (
                     <div key={item.label} className="rounded-lg border border-border/70 bg-secondary/50 p-3 hover:border-t-slate-900 transition-all">
                       <p className="text-xs text-muted-foreground">{item.label}</p>
