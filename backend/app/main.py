@@ -18,19 +18,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(bids.router)
-app.include_router(voice.router)
+app.include_router(bids.router, prefix="/bids", tags=["bids"])
+app.include_router(voice.router, prefix="/voice", tags=["voice"])
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 # ... (imports)
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# Mount static files from frontend directory
+app.mount("/static", StaticFiles(directory="../frontend/static"), name="static")
 
 @app.get("/")
 async def root():
-    return FileResponse("static/index.html")
+    return FileResponse("../frontend/static/index.html")
 
 @app.get("/health")
 async def health_check():

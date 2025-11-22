@@ -1,57 +1,60 @@
-# Bid Sniper Backend
+# PriceSniper - The Bid Sniper
 
-FastAPI backend for "The Bid Sniper – Tender Bender".
+AI-powered bid generation system for contractors.
 
-## Setup
+## Project Structure
 
-1.  **Environment Variables**:
-    Create a `.env` file in the root directory (or set them in your environment):
-    ```bash
-    OPENAI_API_KEY=sk-...
-    VALYU_API_KEY=...
-    VALYU_API_BASE_URL=https://api.valyu.ai
-    LIVEKIT_API_KEY=...
-    LIVEKIT_API_SECRET=...
-    LIVEKIT_URL=wss://...
-    ```
-
-2.  **Install Dependencies**:
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-3.  **Run Server**:
-    ```bash
-    uvicorn app.main:app --reload
-    ```
-
-## API Usage
-
-### Create Bid
-```bash
-curl -X POST http://localhost:8000/bids \
-  -H "Content-Type: application/json" \
-  -d '{
-    "address": "123 Main St, Springfield",
-    "region": "US-IL",
-    "job_type": "roof_repair",
-    "labour_rate": 85.0,
-    "desired_margin_percent": 0.2
-  }'
+```
+PriceSniper/
+├── backend/           # FastAPI backend
+│   ├── app/          # Application code
+│   ├── tests/        # Backend tests
+│   ├── requirements.txt
+│   └── README.md
+├── frontend/         # Static frontend
+│   ├── static/       # HTML/CSS/JS files
+│   └── README.md
+└── .env             # Environment variables
 ```
 
-### Get LiveKit Token
+## Quick Start
+
+### Backend Setup
+
 ```bash
-curl -X POST http://localhost:8000/voice/token \
-  -H "Content-Type: application/json" \
-  -d '{
-    "room_name": "bid-session-123",
-    "identity": "contractor-01"
-  }'
+cd backend
+pip3 install -r requirements.txt
+python3 -m uvicorn app.main:app --reload
 ```
 
-## Testing
-Run tests with pytest:
-```bash
-pytest
+Backend runs at `http://localhost:8000`
+
+### Frontend
+
+The frontend is automatically served by the backend at `http://localhost:8000`
+
+## Configuration
+
+Create a `.env` file in the root directory:
+
+```env
+OPENAI_API_KEY=your_openai_key
+VALYU_API_KEY=your_valyu_key
+VALYU_API_BASE_URL=https://api.valyu.ai
+LIVEKIT_API_KEY=your_livekit_key
+LIVEKIT_API_SECRET=your_livekit_secret
+LIVEKIT_URL=wss://your-livekit-url
 ```
+
+## Features
+
+- **AI-Driven Pricing**: Uses OpenAI to estimate job costs based on property context
+- **Real-Time Data**: Integrates with Valyu API for property and market data
+- **Smart Caching**: Labour rates cached for 24 hours by region
+- **Multiple Search Strategies**: Property details, labour rates, and market rates
+- **LLM-Based Extraction**: Intelligently extracts structured data from web search results
+
+## Cache Configuration
+
+- **Labour Rate Cache TTL**: 24 hours
+- **Cache Key Format**: `{region}:{job_type}`
