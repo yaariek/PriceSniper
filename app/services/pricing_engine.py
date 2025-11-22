@@ -1,28 +1,11 @@
 from app.models.schemas import PropertyContext, PricingOutput, PricingBands
 
 class PricingEngine:
-    def calculate_pricing(self, context: PropertyContext, job_type: str, labour_rate: float, desired_margin: float) -> PricingOutput:
-        # Deterministic logic
+    def calculate_pricing(self, context: PropertyContext, job_type: str, labour_rate: float, desired_margin: float, estimated_hours: float, estimated_materials: float) -> PricingOutput:
+        # Deterministic logic based on AI inputs
         
-        # Base hours estimation (very simple heuristics)
-        base_hours = 0
-        materials_cost = 0
-
-        if job_type == "roof_repair":
-            base_hours = 16
-            materials_cost = 500
-        elif job_type == "bathroom_remodel":
-            base_hours = 80
-            materials_cost = 3000
-        elif job_type == "electrical_rewire":
-            base_hours = 40
-            materials_cost = 1500
-        elif job_type == "general_renovation":
-            base_hours = 120
-            materials_cost = 5000
-        else:
-            base_hours = 20
-            materials_cost = 1000
+        base_hours = estimated_hours
+        materials_cost = estimated_materials
 
         # Adjust for context
         risk_multiplier = 1.0
@@ -35,7 +18,11 @@ class PricingEngine:
             materials_cost *= 0.9
 
         # Calculate internal cost
-        labour_cost = base_hours * labour_rate
+        adjusted_labour_rate = labour_rate
+        if context.labour_rate_band == "high":
+            adjusted_labour_rate *= 1.2 # 20% premium for high-end expectations
+
+        labour_cost = base_hours * adjusted_labour_rate
         internal_cost = (labour_cost + materials_cost) * risk_multiplier
 
         # Calculate bands

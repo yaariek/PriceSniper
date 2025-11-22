@@ -1,57 +1,136 @@
-import httpx
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
+import re
 from app.config import settings
+from app.services.labour_rate_cache import labour_rate_cache
 
 class ValyuClient:
     def __init__(self):
-        self.base_url = settings.VALYU_API_BASE_URL
         self.api_key = settings.VALYU_API_KEY
-        self.headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-
-    async def search_property_and_neighbourhood(self, address: str, region: str, job_type: str) -> List[Dict[str, Any]]:
-        # In a real scenario, this would call the API.
-        # For now, we'll simulate a response or try to call if URL is real.
-        # If the base URL is a placeholder, we return mock data.
+        self.valyu_client = None
         
-        if "api.valyu.ai" in self.base_url and "sk-" not in self.api_key: # simplistic check for real vs mock
-             return self._get_mock_data(address)
+        # Only initialize if we have a real API key
+        if self.api_key and not self.api_key.startswith("placeholder"):
+            try:
+                from valyu import Valyu
+                self.valyu_client = Valyu(api_key=self.api_key)
+            except ImportError:
+                raise RuntimeError("Valyu package not installed. Run: pip install valyu")
+            except Exception as e:
+                raise RuntimeError(f"Failed to initialize Valyu client: {e}")
+        else:
+            raise RuntimeError("Valid Valyu API key required. Please set VALYU_API_KEY in .env")
 
+    async def search_property_details(self, address: str, region: str) -> List[Dict[str, Any]]:
+        """Search for property-specific information: history, permits, value"""
+        query = f"{address}, {region} property history building permits sales price value zoning"
+        
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.base_url}/v1/search",
-                    headers=self.headers,
-                    json={
-                        "query": f"{address}, {region} for {job_type}",
-                        "sources": ["property", "permits", "materials", "neighbourhood"]
-                    },
-                    timeout=10.0
-                )
-                response.raise_for_status()
-                data = response.json()
-                return data.get("results", [])
+            response = self.valyu_client.search(query, search_type="web")
+            results = self._transform_results(response.results)
+            print(f"Property search returned {len(results)} results for: {query}")
+            return results
         except Exception as e:
-            print(f"Valyu API call failed: {e}. Returning mock data.")
-            return self._get_mock_data(address)
+            print(f"Property search failed: {e}")
+            return []
 
-    def _get_mock_data(self, address: str) -> List[Dict[str, Any]]:
-        return [
-            {
-                "title": "Property History",
-                "snippet": f"Built in 1985. Last sold in 2018 for $450,000. {address}",
-                "raw_metadata": {"year_built": 1985, "last_sale_price": 450000, "last_sale_date": "2018-05-15"}
-            },
-            {
-                "title": "Neighbourhood Stats",
-                "snippet": "Median home price in this area is $480k. Prices are trending up 5% YoY.",
-                "raw_metadata": {"median_price": 480000, "trend": "up"}
-            },
-            {
-                "title": "Permit History",
-                "snippet": "Roof replacement permit issued in 2005. HVAC upgrade in 2015.",
-                "raw_metadata": {"permits": [{"type": "roof", "year": 2005}, {"type": "hvac", "year": 2015}]}
-            }
+    async def search_labour_rates(self, region: str, job_type: str) -> Optional[float]:
+        """Search for labour rates in the region for the job type, with caching"""
+        
+        # Check cache first
+        cached_rate = labour_rate_cache.get(region, job_type)
+        if cached_rate is not None:
+            print(f"Using cached labour rate for {region}, {job_type}: £{cached_rate}/hr")
+            return cached_rate
+        
+        # Search Valyu for labour rates
+        query = f"{region} {job_type} labour rate hourly cost contractor tradesperson"
+        
+        try:
+            response = self.valyu_client.search(query, search_type="web")
+            results = self._transform_results(response.results)
+            
+            # Extract labour rate from results
+            labour_rate = self._extract_labour_rate(results)
+            
+            if labour_rate:
+                # Cache the result
+                labour_rate_cache.set(region, job_type, labour_rate)
+                print(f"Detected labour rate for {region}, {job_type}: £{labour_rate}/hr")
+                return labour_rate
+            
+            print(f"Could not detect labour rate from search results")
+            return None
+            
+        except Exception as e:
+            print(f"Labour rate search failed: {e}")
+            return None
+
+    async def search_market_rates(self, region: str, job_type: str) -> List[Dict[str, Any]]:
+        """Search for average market rates and costs for the job type in the region"""
+        query = f"{region} {job_type} average cost price market rate"
+        
+        try:
+            response = self.valyu_client.search(query, search_type="web")
+            results = self._transform_results(response.results)
+            print(f"Market rate search returned {len(results)} results for: {query}")
+            return results
+        except Exception as e:
+            print(f"Market rate search failed: {e}")
+            return []
+
+    def _transform_results(self, results) -> List[Dict[str, Any]]:
+        """Transform Valyu results to our format"""
+        transformed = []
+        for result in results:
+            transformed.append({
+                "title": result.title,
+                "snippet": result.content[:300] if result.content else "",
+                "url": result.url,
+                "raw_metadata": {
+                    "full_content": result.content,
+                    "url": result.url
+                }
+            })
+        return transformed
+
+    def _extract_labour_rate(self, results: List[Dict[str, Any]]) -> Optional[float]:
+        """Extract labour rate from search results using pattern matching"""
+        
+        # Patterns to match: "£50/hr", "£50 per hour", "£50-£60/hr", etc.
+        patterns = [
+            r'£(\d+(?:\.\d+)?)\s*(?:per hour|/hr|/hour|an hour)',
+            r'£(\d+(?:\.\d+)?)\s*-\s*£(\d+(?:\.\d+)?)\s*(?:per hour|/hr|/hour)',
+            r'(\d+(?:\.\d+)?)\s*(?:pounds|GBP)\s*(?:per hour|/hr|/hour)',
         ]
+        
+        rates = []
+        
+        for result in results:
+            content = result.get("snippet", "") + " " + result.get("raw_metadata", {}).get("full_content", "")
+            
+            for pattern in patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                for match in matches:
+                    if isinstance(match, tuple):
+                        # Range match, take average
+                        try:
+                            low = float(match[0])
+                            high = float(match[1])
+                            rates.append((low + high) / 2)
+                        except:
+                            pass
+                    else:
+                        # Single value
+                        try:
+                            rates.append(float(match))
+                        except:
+                            pass
+        
+        if rates:
+            # Return median of found rates
+            rates.sort()
+            median_idx = len(rates) // 2
+            return rates[median_idx]
+        
+        return None
+

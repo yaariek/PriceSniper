@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Bid Sniper</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #result {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+
+        .section h3 {
+            margin-top: 0;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            background: #eee;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .loading {
+            text-align: center;
+            display: none;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>The Bid Sniper 🎯</h1>
+        <form id="bidForm">
+            <div class="form-group">
+                <label>Address</label>
+                <input type="text" id="address" value="123 High Street, Westminster" required>
+            </div>
+            <div class="form-group">
+                <label>Region</label>
+                <input type="text" id="region" value="London, UK" required>
+            </div>
+            <div class="form-group">
+                <label>Job Type</label>
+                <select id="job_type">
+                    <option value="roof_repair">Roof Repair</option>
+                    <option value="bathroom_remodel">Bathroom Remodel</option>
+                    <option value="electrical_rewire">Electrical Rewire</option>
+                    <option value="general_renovation">General Renovation</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Desired Margin (0.0 - 1.0)</label>
+                <input type="number" id="desired_margin" value="0.2" step="0.05" max="1.0" required>
+            </div>
+            <div class="form-group">
+                <label>Notes</label>
+                <textarea id="notes" rows="3" placeholder="Any specific details..."></textarea>
+            </div>
+            <button type="submit">Generate Bid</button>
+        </form>
+
+        <div id="loading" class="loading">Generating bid... This may take a moment.</div>
+
+        <div id="result">
+            <div class="section">
+                <h3>💰 Pricing Strategy</h3>
+                <p><strong>Detected Labour Rate:</strong> £<span id="labour_rate"></span>/hr</p>
+                <p><strong>Internal Cost:</strong> £<span id="internal_cost"></span></p>
+                <p><strong>Win-at-all-costs:</strong> £<span id="price_win"></span></p>
+                <p><strong>Balanced:</strong> £<span id="price_balanced"></span></p>
+                <p><strong>Premium:</strong> £<span id="price_premium"></span></p>
+            </div>
+
+            <div class="section">
+                <h3>🏠 Property Context</h3>
+                <pre id="context_data"></pre>
+            </div>
+
+            <div class="section">
+                <h3>📝 Proposal Draft</h3>
+                <pre id="proposal_text"></pre>
+            </div>
+
+            <div class="section">
+                <h3>🔍 Raw Valyu Data</h3>
+                <pre id="raw_valyu_data"></pre>
+            </div>
+
+            <div class="section">
+                <h3>🧠 Pricing Explanation</h3>
+                <pre id="pricing_explanation"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('bidForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const btn = e.target.querySelector('button');
+
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            btn.disabled = true;
+
+            const payload = {
+                address: document.getElementById('address').value,
+                region: document.getElementById('region').value,
+                job_type: document.getElementById('job_type').value,
+                desired_margin_percent: parseFloat(document.getElementById('desired_margin').value),
+                notes: document.getElementById('notes').value
+            };
+
+            try {
+                const response = await fetch('/bids', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error('Failed to generate bid');
+
+                const data = await response.json();
+
+                // Update UI
+                document.getElementById('labour_rate').textContent = data.property_context.detected_labour_rate || 'N/A';
+                document.getElementById('internal_cost').textContent = data.pricing.internal_cost_estimate;
+                document.getElementById('price_win').textContent = data.pricing.price_bands.win_at_all_costs;
+                document.getElementById('price_balanced').textContent = data.pricing.price_bands.balanced;
+                document.getElementById('price_premium').textContent = data.pricing.price_bands.premium;
+
+                document.getElementById('context_data').textContent = JSON.stringify(data.property_context, null, 2);
+                document.getElementById('raw_valyu_data').textContent = JSON.stringify(data.raw_valyu_results, null, 2);
+                document.getElementById('proposal_text').textContent = data.proposal_draft;
+                document.getElementById('pricing_explanation').textContent = data.pricing_explanation;
+
+                result.style.display = 'block';
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                loading.style.display = 'none';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+
+</html>

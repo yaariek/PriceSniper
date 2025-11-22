@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional, Literal, Dict
+from typing import List, Optional, Literal, Dict, Any
 
 class CreateBidRequest(BaseModel):
     address: str
@@ -7,7 +7,6 @@ class CreateBidRequest(BaseModel):
     job_type: Literal["roof_repair", "bathroom_remodel", "electrical_rewire", "general_renovation", "other"]
     lead_channel: Optional[str] = None
     notes: Optional[str] = None
-    labour_rate: float
     desired_margin_percent: float
 
 class PropertyContext(BaseModel):
@@ -17,10 +16,13 @@ class PropertyContext(BaseModel):
     ownership_duration_years: Optional[float] = None
     neighbourhood_price_median: Optional[float] = None
     neighbourhood_price_trend: Optional[str] = None
+    estimated_value: Optional[float] = None
+    zoning: Optional[str] = None
     permits: List[Dict[str, str]] = []
     likely_risk_flags: List[str] = []
     material_cost_band: str
     labour_rate_band: str
+    detected_labour_rate: Optional[float] = None
 
 class PricingBands(BaseModel):
     win_at_all_costs: float
@@ -45,6 +47,7 @@ class BidResponse(BaseModel):
     pricing_explanation: str
     proposal_draft: str
     followup: FollowUpScripts
+    raw_valyu_results: List[Dict[str, Any]] = []
 
 class VoiceTokenRequest(BaseModel):
     room_name: str

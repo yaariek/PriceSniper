@@ -40,12 +40,12 @@ class LLMClient:
 
     async def generate_proposal(self, context: PropertyContext, pricing: PricingOutput, job_info: dict, notes: str) -> str:
         system = "You are a professional copywriter for construction proposals. Write a persuasive proposal for the homeowner."
-        user = f"Job: {job_info}\nNotes: {notes}\nPrice: ${pricing.price_bands.balanced}\n\nWrite a friendly, professional proposal."
+        user = f"Job: {job_info}\nNotes: {notes}\nPrice: £{pricing.price_bands.balanced}\n\nWrite a friendly, professional proposal."
         return await self._generate(system, user)
 
     async def generate_followups(self, context: PropertyContext, pricing: PricingOutput, job_info: dict) -> FollowUpScripts:
         system = "You are a sales coach. Generate follow-up scripts."
-        user = f"Job: {job_info}\nPrice: ${pricing.price_bands.balanced}\n\nGenerate 3 scripts: 1) Email 2 days later, 2) Email 7 days later, 3) Script for handling 'too expensive' objection."
+        user = f"Job: {job_info}\nPrice: £{pricing.price_bands.balanced}\n\nGenerate 3 scripts: 1) Email 2 days later, 2) Email 7 days later, 3) Script for handling 'too expensive' objection."
         
         # In a real app, we might use function calling or JSON mode to get structured output.
         # For now, we'll just ask for a combined string and parse it or just return raw text in fields for simplicity if parsing is hard.
@@ -67,3 +67,34 @@ class LLMClient:
         system = "You are a real-time negotiation coach for a contractor."
         user = f"Bid Context: {bid_context}\nUser Message/Situation: {message}\n\nGive short, actionable advice."
         return await self._generate(system, user)
+
+    async def estimate_job_parameters(self, context: PropertyContext, job_info: dict) -> dict:
+        system = "You are an expert construction estimator. Analyze the property context and local market data to estimate job costs."
+        user = f"""
+        Context: {context.model_dump_json()}
+        Job: {job_info}
+        
+        Estimate the 'base_hours' (labour hours) and 'materials_cost' (in GBP) for this specific job.
+        Consider the property age, condition, and local market rates if available.
+        
+        Output ONLY a valid JSON object with keys: "base_hours" (float) and "materials_cost" (float).
+        Example: {{"base_hours": 24.5, "materials_cost": 1200.0}}
+        """
+        
+        response_text = await self._generate(system, user)
+        
+        # Simple parsing attempt
+        import json
+        import re
+        
+        try:
+            # Extract JSON from code blocks if present
+            match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if match:
+                json_str = match.group(0)
+                return json.loads(json_str)
+            else:
+                return json.loads(response_text)
+        except Exception as e:
+            print(f"Failed to parse LLM estimation: {e}. Using defaults.")
+            return {"base_hours": 20.0, "materials_cost": 1000.0}

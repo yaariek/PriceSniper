@@ -21,6 +21,17 @@ app.add_middleware(
 app.include_router(bids.router)
 app.include_router(voice.router)
 
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# ... (imports)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/")
+async def root():
+    return FileResponse("static/index.html")
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "version": "0.1.0"}
