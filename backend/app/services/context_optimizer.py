@@ -27,26 +27,17 @@ class ContextOptimizer:
             raw_data_text = self._format_raw_results(raw_results)
             
             # Create extraction prompt
-            system_prompt = """You are a data extraction expert. Extract structured property information from search results.
-Return a JSON object with these exact fields (use null if not found):
-- property_year_built: integer or null
-- last_sale_price: float or null (in GBP)
-- last_sale_date: string (YYYY-MM-DD format) or null
-- ownership_duration_years: float or null (calculate from last_sale_date to now if possible)
-- neighbourhood_price_median: float or null (in GBP)
-- neighbourhood_price_trend: string ("up", "down", "stable") or null
-- estimated_value: float or null (in GBP)
-- zoning: string or null
-- permits: array of objects with "type" and "year" fields
-- likely_risk_flags: array of strings (e.g., "Old wiring/plumbing risk")
-- material_cost_band: string ("low", "medium", "high")
-- labour_rate_band: string ("low", "medium", "high")"""
+            
 
             user_prompt = f"""Extract property context from these search results:
 
 {raw_data_text}
 
 Job Type: {job_info.get('job_type', 'unknown')}
+Address: {job_info.get('address', 'unknown')}
+
+CRITICAL: Focus on finding the year built - check ALL results for any mention of age, period, or construction date.
+Also determine the property type (flat, house type, etc.) from context clues.
 
 Return ONLY valid JSON matching the schema."""
 
@@ -72,21 +63,34 @@ Return ONLY valid JSON matching the schema."""
             
             # Create PropertyContext from extracted data
             context = PropertyContext(
+                # Property details
                 property_year_built=extracted_data.get("property_year_built"),
+                year_built_confidence=extracted_data.get("year_built_confidence", "unknown"),
+                architectural_period=extracted_data.get("architectural_period"),
+                property_type=extracted_data.get("property_type"),
+                property_size_sqm=extracted_data.get("property_size_sqm"),
+                number_of_bedrooms=extracted_data.get("number_of_bedrooms"),
+                number_of_floors=extracted_data.get("number_of_floors"),
+                
+                # Market data
                 last_sale_price=extracted_data.get("last_sale_price"),
                 last_sale_date=extracted_data.get("last_sale_date"),
                 ownership_duration_years=extracted_data.get("ownership_duration_years"),
                 neighbourhood_price_median=extracted_data.get("neighbourhood_price_median"),
                 neighbourhood_price_trend=extracted_data.get("neighbourhood_price_trend"),
                 estimated_value=extracted_data.get("estimated_value"),
+                
+                # Planning & risk
                 zoning=extracted_data.get("zoning"),
                 permits=extracted_data.get("permits", []),
                 likely_risk_flags=extracted_data.get("likely_risk_flags", []),
-                material_cost_band=extracted_data["material_cost_band"],
-                labour_rate_band=extracted_data["labour_rate_band"]
+                
+                # Cost indicators
+                material_cost_band=extracted_data.get("material_cost_band", "medium"),
+                labour_rate_band=extracted_data.get("labour_rate_band", "medium")
             )
             
-            print(f"LLM extracted context: year_built={context.property_year_built}, sale_price={context.last_sale_price}, estimated_value={context.estimated_value}")
+            print(f"LLM extracted context: year={context.property_year_built} ({context.year_built_confidence}), type={context.property_type}, period={context.architectural_period}")
             return context
             
         except Exception as e:

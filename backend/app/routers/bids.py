@@ -3,7 +3,7 @@ from app.models.schemas import CreateBidRequest, BidResponse
 from app.models.entities import bid_store
 from app.core.pipeline import BidPipeline
 
-router = APIRouter(prefix="/bids", tags=["bids"])
+router = APIRouter(tags=["bids"])
 
 def get_pipeline():
     return BidPipeline()

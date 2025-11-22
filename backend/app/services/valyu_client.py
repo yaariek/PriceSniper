@@ -2,6 +2,7 @@ from typing import List, Dict, Any, Optional
 import re
 from app.config import settings
 from app.services.labour_rate_cache import labour_rate_cache
+from app.utils.retry import with_retry
 
 class ValyuClient:
     def __init__(self):
@@ -20,19 +21,28 @@ class ValyuClient:
         else:
             raise RuntimeError("Valid Valyu API key required. Please set VALYU_API_KEY in .env")
 
+    @with_retry(max_retries=3, initial_delay=1.0)
     async def search_property_details(self, address: str, region: str) -> List[Dict[str, Any]]:
-        """Search for property-specific information: history, permits, value"""
-        query = f"{address}, {region} property history building permits sales price value zoning"
+        """Search for comprehensive property information including type, year, size"""
+        # Enhanced query with multiple property attributes
+        query = f"""{address}, {region} 
+property type detached terraced flat house bungalow semi_detached 
+year built construction date when built age 
+square meters sqm sqm2 size size_sqft 
+number of bedrooms bedrooms rooms 
+property history building permits sales price value zoning 
+architectural style Victorian Edwardian Georgian modern new build"""
         
         try:
             response = self.valyu_client.search(query, search_type="web")
             results = self._transform_results(response.results)
-            print(f"Property search returned {len(results)} results for: {query}")
+            print(f"Property search returned {len(results)} results for: {address}")
             return results
         except Exception as e:
             print(f"Property search failed: {e}")
             return []
 
+    @with_retry(max_retries=3, initial_delay=1.0)
     async def search_labour_rates(self, region: str, job_type: str) -> Optional[float]:
         """Search for labour rates in the region for the job type, with caching"""
         
@@ -65,6 +75,7 @@ class ValyuClient:
             print(f"Labour rate search failed: {e}")
             return None
 
+    @with_retry(max_retries=3, initial_delay=1.0)
     async def search_market_rates(self, region: str, job_type: str) -> List[Dict[str, Any]]:
         """Search for average market rates and costs for the job type in the region"""
         query = f"{region} {job_type} average cost price market rate"

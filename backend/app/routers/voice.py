@@ -4,7 +4,7 @@ from app.models.entities import bid_store
 from app.services.livekit_client import LiveKitClient
 from app.services.llm_client import LLMClient
 
-router = APIRouter(prefix="/voice", tags=["voice"])
+router = APIRouter(tags=["voice"])
 
 def get_livekit():
     return LiveKitClient()

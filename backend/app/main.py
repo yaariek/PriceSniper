@@ -23,15 +23,30 @@ app.include_router(voice.router, prefix="/voice", tags=["voice"])
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+import os
 
-# ... (imports)
+# Serve React build files (after running npm run build)
+frontend_build_path = os.path.join(os.path.dirname(__file__), "../../frontend/dist")
 
-# Mount static files from frontend directory
-app.mount("/static", StaticFiles(directory="../frontend/static"), name="static")
-
-@app.get("/")
-async def root():
-    return FileResponse("../frontend/static/index.html")
+# Mount static assets
+if os.path.exists(frontend_build_path):
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_build_path, "assets")), name="assets")
+    
+    @app.get("/")
+    async def root():
+        return FileResponse(os.path.join(frontend_build_path, "index.html"))
+    
+    # Catch-all route for React Router (SPA)
+    @app.get("/{full_path:path}")
+    async def serve_react_app(full_path: str):
+        # Don't intercept API routes
+        if full_path.startswith(("bids", "voice", "health")):
+            return {"error": "Not found"}
+        return FileResponse(os.path.join(frontend_build_path, "index.html"))
+else:
+    @app.get("/")
+    async def root():
+        return {"message": "Frontend not built. Run 'cd frontend && npm install && npm run build'"}
 
 @app.get("/health")
 async def health_check():

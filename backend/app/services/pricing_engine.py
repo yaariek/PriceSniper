@@ -1,7 +1,9 @@
-from app.models.schemas import PropertyContext, PricingOutput, PricingBands
+from app.models.schemas import PropertyContext, PricingOutput, PricingBands, LabourTask, MaterialLineItem
+from app.services.materials import get_material_cost
+from typing import List
 
 class PricingEngine:
-    def calculate_pricing(self, context: PropertyContext, job_type: str, labour_rate: float, desired_margin: float, estimated_hours: float, estimated_materials: float) -> PricingOutput:
+    def calculate_pricing(self, context: PropertyContext, job_type: str, labour_rate: float, desired_margin: float, estimated_hours: float, estimated_materials: float, labour_tasks: List[LabourTask] = None, materials: List[MaterialLineItem] = None) -> PricingOutput:
         # Deterministic logic based on AI inputs
         
         base_hours = estimated_hours
@@ -22,8 +24,22 @@ class PricingEngine:
         if context.labour_rate_band == "high":
             adjusted_labour_rate *= 1.2 # 20% premium for high-end expectations
 
-        labour_cost = base_hours * adjusted_labour_rate
+        labour_breakdown = labour_tasks if labour_tasks else []
+        materials_breakdown = materials if materials else []
+        # Compute costs from breakdowns if available
+        if labour_breakdown:
+            labour_cost = sum(task.hours * adjusted_labour_rate * task.workers for task in labour_breakdown)
+        else:
+            labour_cost = base_hours * adjusted_labour_rate
+        if materials_breakdown:
+            materials_cost = sum(get_material_cost(item.item, item.quantity) for item in materials_breakdown)
+        else:
+            materials_cost = estimated_materials
+        total_labour_cost = labour_cost
+        total_materials_cost = materials_cost
         internal_cost = (labour_cost + materials_cost) * risk_multiplier
+        total_materials_cost = sum(item.total_cost for item in materials_breakdown) if materials_breakdown else materials_cost
+        total_labour_cost = sum(task.hours * adjusted_labour_rate * task.workers for task in labour_breakdown) if labour_breakdown else labour_cost
 
         # Calculate bands
         # Win at all costs: 15% margin
@@ -47,5 +63,9 @@ class PricingEngine:
                 balanced=round(balanced_price, 2),
                 premium=round(premium_price, 2)
             ),
-            min_recommended_price=round(win_price, 2)
+            min_recommended_price=round(win_price, 2),
+            materials_breakdown=materials_breakdown,
+            labour_breakdown=labour_breakdown,
+            total_materials_cost=round(total_materials_cost, 2),
+            total_labour_cost=round(total_labour_cost, 2)
         )
